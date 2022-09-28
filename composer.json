@@ -1,0 +1,22 @@
+{
+    "name": "binsuper/phplib",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Gino\\Phplib\\": "src/"
+        },
+        "files": [
+            "src/function.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Gino Huang",
+            "email": "binsuper@126.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.0"
+    }
+}
