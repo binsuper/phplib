@@ -2,7 +2,19 @@
 
 require_once 'vendor/autoload.php';
 
-$config = new \Gino\Phplib\Config\Config();
-$data = $config->get('testini');
+$config = new \Gino\Phplib\Config\Config([
+//    'parsers' => ['php' => \Gino\Phplib\Parser\ArrayParser::class]
+]);
+//$data = $config->get('testini');
 
-//print_r($data);
+//$config->loadAll();
+//$config->set('array.owner.sex', 'man');
+//print_r($config->get('json'));
+
+
+
+//$yp = new \Gino\Phplib\Config\YamlParser();
+//$yp->parse('config/yaml.yaml');
+
+
+print_r(\Gino\Phplib\Config\Config::instance()->get('json'));

@@ -1,18 +1,19 @@
 <?php
 
-namespace Gino\Phplib\Config\Parser;
+namespace Gino\Phplib\Parser;
 
 use Gino\Phplib\ArrayObject;
+use Gino\Phplib\Error\ParseException;
 
-class IniParser implements IParser {
+class IniParser extends Parser {
 
     /**
      * @inheritDoc
      */
-    public function load(string $filepath) {
+    public function parse(string $filepath) {
         $data = parse_ini_file($filepath, true);
         if (false === $data) {
-            throw new \Exception(sprintf('can not parse ini file "%s"', $filepath));
+            throw new ParseException(sprintf('can not parse ini file "%s"', $filepath));
         }
         foreach ($data as $section => $sub) {
             $array = new ArrayObject();

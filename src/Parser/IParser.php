@@ -1,6 +1,6 @@
 <?php
 
-namespace Gino\Phplib\Config\Parser;
+namespace Gino\Phplib\Parser;
 
 interface IParser {
 
@@ -10,6 +10,6 @@ interface IParser {
      * @param object|null $object
      * @return array
      */
-    public function load(string $filepath);
+    public function parse(string $filepath);
 
 }

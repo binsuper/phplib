@@ -3,30 +3,45 @@
 namespace Gino\Phplib\Config;
 
 use Gino\Phplib\ArrayObject;
-use Gino\Phplib\Config\Parser\ArrayParser;
-use Gino\Phplib\Config\Parser\IFinder;
-use Gino\Phplib\Config\Parser\IniParser;
-use Gino\Phplib\Config\Parser\IParser;
-use Gino\Phplib\Config\Parser\SimpleFinder;
+use Gino\Phplib\Error\NotFoundException;
+use Gino\Phplib\Parser\ArrayParser;
+use Gino\Phplib\Config\DomainFinder;
+use Gino\Phplib\Config\IFinder;
+use Gino\Phplib\Parser\HoconParser;
+use Gino\Phplib\Parser\IniParser;
+use Gino\Phplib\Parser\IParser;
+use Gino\Phplib\Config\SimpleFinder;
+use Gino\Phplib\Error\ParseException;
+use Gino\Phplib\Parser\JsonParser;
+use Gino\Phplib\Parser\TomlParser;
+use Gino\Phplib\Parser\XmlParser;
+use Gino\Phplib\Parser\YamlParser;
 
 class Config {
 
     public static $PARSER_SETTING = [
-        'php' => ArrayParser::class,
-        'ini' => IniParser::class,
+        'php'  => ArrayParser::class,
+        'yaml' => YamlParser::class,
+        'toml' => TomlParser::class,
+        'ini'  => IniParser::class,
+        'json' => JsonParser::class,
+        'xml'  => XmlParser::class,
     ];
 
     public static $FINDER_SETTING = [
-        SimpleFinder::class
+        DomainFinder::class,
+        SimpleFinder::class,
     ];
+
+    private static $__instance = null;
 
     protected $_data = null;
 
-    public $cfg_load_dir = 'config';
+    protected $root_dir = 'config';
 
-    public $parsers = [];
+    protected $parsers = [];
 
-    public $finders = [];
+    protected $finders = [];
 
 
     /**
@@ -49,19 +64,64 @@ class Config {
         static::$FINDER_SETTING[] = $class;
     }
 
-    public function __construct() {
+    /**
+     * @param array $options
+     * @return static
+     * @throws \Exception
+     */
+    public static function instance(array $options = []) {
+        if (static::$__instance === null) {
+            static::$__instance = new static($options);
+        }
+        return static::$__instance;
+    }
+
+    /**
+     * @param $method
+     * @param $params
+     * @return false|mixed
+     * @throws NotFoundException
+     */
+    public static function __callStatic($method, $params) {
+        if (method_exists(static::class, $method)) {
+            return call_user_func([static::instance(), $method], $params);
+        }
+        throw new NotFoundException(sprintf('Call to undefined static method %s::%s()', static::class, $method));
+    }
+
+
+    /**
+     * @param array $options
+     * @throws \Exception
+     */
+    public function __construct(array $options = []) {
+        // option
+        $parser_setting = static::$PARSER_SETTING;
+        $finder_setting = static::$FINDER_SETTING;
+
+        if (isset($options['parsers'])) {
+            $parser_setting = $options['parsers'];
+        }
+        if (isset($options['finder'])) {
+            $finder_setting = $options['finder'];
+        }
+        if (isset($options['root_dir'])) {
+            $this->setRootDir($options['root_dir']);
+        }
+
+        // init
         $this->_data = new ArrayObject();
 
-        foreach (static::$PARSER_SETTING as $k => $class) {
+        foreach ($parser_setting as $k => $class) {
             if (!class_implements($class)[IParser::class]) {
-                throw new \Exception("parser driver($class) must implements class(" . IParser::class . ')');
+                throw new \Exception(sprintf('parser driver "%s" must implements interface "%s"', $class, IParser::class));
             }
             $this->parsers[$k] = new $class();
         }
 
         foreach (static::$FINDER_SETTING as $k => $class) {
             if (!class_implements($class)[IFinder::class]) {
-                throw new \Exception("finder driver($class) must implements class(" . IFinder::class . ')');
+                throw new \Exception(sprintf('finder driver "%s" must implements interface "%s"', $class, IParser::class));
             }
             $this->finders[$k] = new $class();
         }
@@ -72,8 +132,8 @@ class Config {
      *
      * @param string $dir
      */
-    public function setCfgLoadDir(string $dir) {
-        $this->cfg_load_dir = $dir;
+    public function setRootDir(string $dir) {
+        $this->root_dir = $dir;
     }
 
     /**
@@ -84,20 +144,76 @@ class Config {
     protected function load(string $scope) {
         // finder
         foreach ($this->finders as $finder) {
-            $filepath = call_user_func([$finder, 'find'], $this->cfg_load_dir, $scope);
-            if (!empty($filepath)) {
-                break;
+            $search_files = call_user_func([$finder, 'find'], $this->root_dir, $scope);
+            // parser
+            foreach ($search_files as $path) {
+                foreach ($this->parsers as $suffix => $parser) {
+                    $file = $path . '.' . $suffix;
+                    if (!is_file($file)) {
+                        continue;
+                    }
+                    try {
+                        $this->_data[$scope] = call_user_func([$parser, 'parse'], $file);
+                    } catch (\Throwable $ex) {
+                        throw new ParseException($ex->getMessage(), $ex->getCode(), $ex);
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * load config from all config file
+     */
+    public function loadAll() {
+        $support_suffix = array_keys($this->parsers);
+
+        $search_dir = [];
+        foreach ($this->finders as $finder) {
+            $search_dir = array_unique(array_merge($search_dir, call_user_func([$finder, 'find'], $this->root_dir, '')));
+        }
+
+        $load_files = [];
+        while ($dir = array_pop($search_dir)) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            // open dir
+            $dh = dir($dir);
+            if (false === $dh) {
+                throw new \RuntimeException(sprintf('can not open dir "%s"', $dir));
+            }
+
+            // read dir
+            while (false !== ($entry = $dh->read())) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                $filepath = $dir . DIRECTORY_SEPARATOR . $entry;
+                if (!is_file($filepath)) {
+                    continue;
+                }
+
+                // check support file
+                $suffix = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+                if (!in_array($suffix, $support_suffix)) {
+                    continue;
+                }
+
+                $scope              = pathinfo($filepath, PATHINFO_FILENAME);
+                $load_files[$scope] = [$suffix, $filepath];
             }
         }
 
-        // parser
-        foreach ($this->parsers as $suffix => $parser) {
-            $file = $filepath . '.' . $suffix;
-            if (!file_exists($file)) {
-                continue;
+        // load file
+        try {
+            foreach ($load_files as $scope => $fileinfo) {
+                $this->_data[$scope] = call_user_func([$this->parsers[$fileinfo[0]], 'parse'], $fileinfo[1]);
             }
-            $this->_data[$scope] = call_user_func([$parser, 'load'], $file);
-            return;
+        } catch (\Throwable $ex) {
+            throw new ParseException($ex->getMessage(), $ex->getCode(), $ex);
         }
     }
 

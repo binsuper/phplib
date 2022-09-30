@@ -17,6 +17,8 @@
         }
     ],
     "require": {
-        "php": ">=7.2.0"
+        "php": ">=7.2.0",
+        "symfony/yaml": "^5.4",
+        "yosymfony/toml": "^1.0"
     }
 }
