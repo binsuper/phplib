@@ -10,10 +10,10 @@ class ArrayObject extends \ArrayObject {
 
     /**
      * @param mixed $key
-     * @param mixed $val
+     * @param mixed|null $val
      * @return $this
      */
-    public function set($key, $val) {
+    public function set($key, $val = null) {
         if (is_null($key)) {
             return $this;
         }
@@ -34,6 +34,13 @@ class ArrayObject extends \ArrayObject {
                 $array = &$array[$k];
             }
             $array[array_shift($keys)] = $val;
+            return $this;
+        }
+
+        if (is_array($key)) {
+            foreach ($key as $k => $v) {
+                $this->set($k, $v);
+            }
             return $this;
         }
 

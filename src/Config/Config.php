@@ -77,20 +77,6 @@ class Config {
     }
 
     /**
-     * @param $method
-     * @param $params
-     * @return false|mixed
-     * @throws NotFoundException
-     */
-    public static function __callStatic($method, $params) {
-        if (method_exists(static::class, $method)) {
-            return call_user_func([static::instance(), $method], $params);
-        }
-        throw new NotFoundException(sprintf('Call to undefined static method %s::%s()', static::class, $method));
-    }
-
-
-    /**
      * @param array $options
      * @throws \Exception
      */
@@ -141,7 +127,7 @@ class Config {
      *
      * @param string $scope
      */
-    protected function load(string $scope) {
+    public function load(string $scope) {
         // finder
         foreach ($this->finders as $finder) {
             $search_files = call_user_func([$finder, 'find'], $this->root_dir, $scope);
@@ -221,7 +207,7 @@ class Config {
      * @param $key
      */
     protected function initScope($key) {
-        if (is_null($key)) return;
+        if (is_null($key) || !is_string($key)) return;
         $keys  = explode('.', $key);
         $scope = array_shift($keys);
         if (!$this->_data->has($scope)) {
@@ -244,12 +230,12 @@ class Config {
     /**
      * set config
      *
-     * @param $key
-     * @param $val
+     * @param mixed $key
+     * @param mixed|null $val
      * @return $this
      */
-    public function set($key, $val) {
-        $this->initScope($key);
+    public function set($key, $val = null) {
+//        $this->initScope($key);
         $this->_data->set($key, $val);
         return $this;
     }
@@ -261,7 +247,7 @@ class Config {
      * @return bool
      */
     public function has($key) {
-        $this->initScope($key);
+//        $this->initScope($key);
         return $this->_data->has($key);
     }
 
@@ -272,7 +258,7 @@ class Config {
      * @return $this
      */
     public function del($key) {
-        $this->initScope($key);
+//        $this->initScope($key);
         $this->_data->del($key);
         return $this;
     }
