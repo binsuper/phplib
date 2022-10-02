@@ -119,7 +119,7 @@ class Config {
      * @param string $dir
      */
     public function setRootDir(string $dir) {
-        $this->root_dir = $dir;
+        $this->root_dir = trim(rtrim($dir, DIRECTORY_SEPARATOR));
     }
 
     /**
@@ -196,7 +196,9 @@ class Config {
         // load file
         try {
             foreach ($load_files as $scope => $fileinfo) {
-                $this->_data[$scope] = call_user_func([$this->parsers[$fileinfo[0]], 'parse'], $fileinfo[1]);
+                list($suffix, $filepath) = $fileinfo;
+                $data = call_user_func([$this->parsers[$suffix], 'parse'], $filepath);
+                $this->_data->set($scope, $data);
             }
         } catch (\Throwable $ex) {
             throw new ParseException($ex->getMessage(), $ex->getCode(), $ex);
@@ -235,7 +237,6 @@ class Config {
      * @return $this
      */
     public function set($key, $val = null) {
-//        $this->initScope($key);
         $this->_data->set($key, $val);
         return $this;
     }
@@ -247,7 +248,6 @@ class Config {
      * @return bool
      */
     public function has($key) {
-//        $this->initScope($key);
         return $this->_data->has($key);
     }
 
@@ -258,7 +258,6 @@ class Config {
      * @return $this
      */
     public function del($key) {
-//        $this->initScope($key);
         $this->_data->del($key);
         return $this;
     }
