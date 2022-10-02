@@ -8,13 +8,18 @@ class DomainFinder implements IFinder {
      * @inheritDoc
      */
     public function find(string $dir, string $scope): array {
-        $directory = get_server_host();
-        if (!$directory) {
-            $directory = 'console';
+        $settled = $dir . DIRECTORY_SEPARATOR . '.domain';
+        if (is_file($settled)) {
+            $domain = trim(file_get_contents($settled));
+        } else {
+            $domain = get_server_host();
+        }
+        if (!$domain) {
+            $domain = 'console';
         }
 
         return [
-            $dir . DIRECTORY_SEPARATOR . $directory . DIRECTORY_SEPARATOR . $scope,
+            $dir . DIRECTORY_SEPARATOR . $domain . DIRECTORY_SEPARATOR . $scope,
         ];
     }
 

@@ -17,4 +17,4 @@ $config = new \Gino\Phplib\Config\Config([
 //$yp->parse('config/yaml.yaml');
 
 
-print_r(\Gino\Phplib\Config\Config::instance()->get('json'));
+var_dump(\Gino\Phplib\Config\Config::instance()->get('jso1n'));
