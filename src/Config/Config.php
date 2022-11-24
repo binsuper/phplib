@@ -19,7 +19,18 @@ use Gino\Phplib\Parser\YamlParser;
 
 class Config {
 
-    public static $PARSER_SETTING = [
+    public const OPT_ROOT_DIR = 'root_dir';
+    public const OPT_PARSERS  = 'parsers';
+    public const OPT_FINDERS  = 'finders';
+
+    /** @var array default option */
+    public const DEFAULT_OPTIONS = [
+        self::OPT_PARSERS  => self::PARSER_SETTING,
+        self::OPT_FINDERS  => self::FINDER_SETTING,
+        self::OPT_ROOT_DIR => 'config',
+    ];
+
+    public const PARSER_SETTING = [
         'php'  => ArrayParser::class,
         'yaml' => YamlParser::class,
         'toml' => TomlParser::class,
@@ -28,13 +39,19 @@ class Config {
         'xml'  => XmlParser::class,
     ];
 
-    public static $FINDER_SETTING = [
+    public const FINDER_SETTING = [
         DomainFinder::class,
         SimpleFinder::class,
     ];
 
-    private static $__instance = null;
+    /**
+     * @var array<static>
+     */
+    private static $__instance = [];
 
+    /**
+     * @var ArrayObject|null
+     */
     protected $_data = null;
 
     protected $root_dir = 'config';
@@ -43,37 +60,28 @@ class Config {
 
     protected $finders = [];
 
-
     /**
-     * add parser
+     * regist singleton object
      *
-     * @param string $suffix suffix of file
-     * @param string $class IParse class name
-     */
-    public static function addParser(string $suffix, string $class) {
-        static::$PARSER_SETTING[$suffix] = $class;
-    }
-
-    /**
-     * add finder
-     *
-     * @param string $suffix suffix of file
-     * @param string $class IFinder class name
-     */
-    public static function addFinder(string $suffix, string $class) {
-        static::$FINDER_SETTING[] = $class;
-    }
-
-    /**
+     * @param string $name
      * @param array $options
      * @return static
      * @throws \Exception
      */
-    public static function instance(array $options = []) {
-        if (static::$__instance === null) {
-            static::$__instance = new static($options);
-        }
-        return static::$__instance;
+    public static function registe(string $name, array $options = []) {
+        static::$__instance[$name] = new static($options);
+        return static::$__instance[$name];
+    }
+
+    /**
+     * 获取单例
+     *
+     * @param string $name
+     * @return static
+     * @throws \Exception
+     */
+    public static function instance(string $name = '__MAIN__') {
+        return static::$__instance[$name] ?? static::registe($name);
     }
 
     /**
@@ -81,19 +89,12 @@ class Config {
      * @throws \Exception
      */
     public function __construct(array $options = []) {
-        // option
-        $parser_setting = static::$PARSER_SETTING;
-        $finder_setting = static::$FINDER_SETTING;
+        $options = array_merge(self::DEFAULT_OPTIONS, $options);
 
-        if (isset($options['parsers'])) {
-            $parser_setting = $options['parsers'];
-        }
-        if (isset($options['finder'])) {
-            $finder_setting = $options['finder'];
-        }
-        if (isset($options['root_dir'])) {
-            $this->setRootDir($options['root_dir']);
-        }
+        // option
+        $parser_setting = $options[self::OPT_PARSERS];
+        $finder_setting = $options[self::OPT_FINDERS];
+        $this->setRootDir($options[self::OPT_ROOT_DIR]);
 
         // init
         $this->_data = new ArrayObject();
@@ -105,7 +106,7 @@ class Config {
             $this->parsers[$k] = new $class();
         }
 
-        foreach (static::$FINDER_SETTING as $k => $class) {
+        foreach ($finder_setting as $k => $class) {
             if (!class_implements($class)[IFinder::class]) {
                 throw new \Exception(sprintf('finder driver "%s" must implements interface "%s"', $class, IParser::class));
             }
