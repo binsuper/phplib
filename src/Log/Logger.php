@@ -58,9 +58,9 @@ class Logger {
         }
 
         if ('' === $channel) {
-            $channel = $this->config->get('logger.default');
+            $channel = $this->config->get('default');
         }
-        $key = 'logger.channels.' . $channel;
+        $key = 'channels.' . $channel;
         $cfg = $this->config->get($key, false);
         if (false === $cfg) {
             throw BadConfigurationException::miss($key);
@@ -79,8 +79,8 @@ class Logger {
      * @throws BadConfigurationException
      */
     protected static function channelFactory(string $channel, array $cfg): \Monolog\Logger {
-        $driver   = $cfg['driver'];
-        $callback = $cfg['callback'] ?? false;
+        $driver    = $cfg['driver'];
+        $callback  = $cfg['callback'] ?? false;
         $formatter = $cfg['formatter'] ?? false;
 
         // get handler
