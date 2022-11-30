@@ -19,6 +19,12 @@ class ArrayObject extends \ArrayObject {
         }
 
         if (is_string($key)) {
+
+            if (isset($this[$key])) {
+                $this[$key] = $val;
+                return $this;
+            }
+
             $keys  = explode('.', $key);
             $array = $this;
             foreach ($keys as $i => $k) {
@@ -66,6 +72,9 @@ class ArrayObject extends \ArrayObject {
         }
 
         if (is_string($key)) {
+            if (isset($this[$key])) {
+                return $this[$key];
+            }
             if (strpos($key, '.') === false) {
                 return $this[$key] ?? $def;
             }
@@ -78,15 +87,6 @@ class ArrayObject extends \ArrayObject {
                 }
             }
             return $arr;
-        }
-        if (is_callable($key)) {
-            $array = [];
-            foreach ($this as $k => $v) {
-                if (call_user_func($key, $v, $k) === true) {
-                    $array[$k] = $v;
-                }
-            }
-            return $array;
         }
 
         return $this[$key] ?? $def;
@@ -104,6 +104,9 @@ class ArrayObject extends \ArrayObject {
 
         if (is_string($key)) {
             $arr = $this;
+            if (isset($this[$key])) {
+                return true;
+            }
             foreach (explode('.', $key) as $k) {
                 if (isset($arr[$k])) {
                     $arr = $arr[$k];
@@ -112,14 +115,6 @@ class ArrayObject extends \ArrayObject {
                 }
             }
             return true;
-        }
-        if (is_callable($key)) {
-            foreach ($this as $k => $v) {
-                if (call_user_func($key, $k, $v) === true) {
-                    return true;
-                }
-            }
-            return false;
         }
 
         return isset($item[$key]);
@@ -135,6 +130,10 @@ class ArrayObject extends \ArrayObject {
         }
 
         if (is_string($key)) {
+            if (isset($this[$key])) {
+                unset($this[$key]);
+                return $this;
+            }
             $keys  = explode('.', $key);
             $array = $this;
             foreach ($keys as $i => $k) {
@@ -150,15 +149,6 @@ class ArrayObject extends \ArrayObject {
                 $array = &$array[$k];
             }
             unset($array[array_shift($keys)]);
-            return $this;
-        }
-
-        if (is_callable($key)) {
-            foreach ($this as $k => $v) {
-                if (call_user_func($key, $k, $v) === true) {
-                    unset($this[$k]);
-                }
-            }
             return $this;
         }
 

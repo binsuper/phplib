@@ -2,6 +2,6 @@
 
 require_once 'vendor/autoload.php';
 
-$config = new \Gino\Phplib\Config\Config();
-$config->loadAll();
-print_r($config->get());
+$arr = new \Gino\Phplib\ArrayObject(['a.b' => 123]);
+var_dump($arr);
+var_dump($arr->del('a.b'));
