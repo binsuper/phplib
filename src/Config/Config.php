@@ -25,12 +25,12 @@ class Config {
 
     /** @var array default option */
     public const DEFAULT_OPTIONS = [
-        self::OPT_PARSERS  => self::PARSER_SETTING,
-        self::OPT_FINDERS  => self::FINDER_SETTING,
+        self::OPT_PARSERS  => self::DEFAULT_PARSER_SETTING,
+        self::OPT_FINDERS  => self::DEFAULT_FINDER_SETTING,
         self::OPT_ROOT_DIR => 'config',
     ];
 
-    public const PARSER_SETTING = [
+    public const DEFAULT_PARSER_SETTING = [
         'php'  => ArrayParser::class,
         'yaml' => YamlParser::class,
         'toml' => TomlParser::class,
@@ -39,7 +39,7 @@ class Config {
         'xml'  => XmlParser::class,
     ];
 
-    public const FINDER_SETTING = [
+    public const DEFAULT_FINDER_SETTING = [
         DomainFinder::class,
         SimpleFinder::class,
     ];
@@ -124,9 +124,46 @@ class Config {
     }
 
     /**
+     * read file and return the config
+     *
+     * @param string $filepath
+     * @param string $suffix
+     * @return array|null
+     * @throws ParseException
+     */
+    public function readFile(string $filepath, string $suffix = ''): ?array {
+        if (empty($suffix)) {
+            $suffix = ($info = pathinfo($filepath))['extension'] ?? '';
+            $file   = $filepath;
+        } else {
+            $file = $filepath . '.' . $suffix;
+        }
+
+        if (!is_file($file)) {
+            echo $file . PHP_EOL;
+            return null;
+        }
+
+        $parser = $this->parsers[$suffix] ?? false;
+        if (!$parser) {
+            return null;
+        }
+
+        try {
+            $data = call_user_func([$parser, 'parse'], $file);
+        } catch (\Throwable $ex) {
+            throw new ParseException($ex->getMessage(), $ex->getCode(), $ex);
+        }
+
+        return $data ?? [];
+    }
+
+    /**
      * load config from file
      *
      * @param string $scope
+     * @return $this
+     * @throws ParseException
      */
     public function load(string $scope) {
         // finder
@@ -135,23 +172,20 @@ class Config {
             // parser
             foreach ($search_files as $path) {
                 foreach ($this->parsers as $suffix => $parser) {
-                    $file = $path . '.' . $suffix;
-                    if (!is_file($file)) {
-                        continue;
-                    }
-                    try {
-                        $this->_data[$scope] = call_user_func([$parser, 'parse'], $file);
-                    } catch (\Throwable $ex) {
-                        throw new ParseException($ex->getMessage(), $ex->getCode(), $ex);
-                    }
-                    return;
+                    $this->_data->set($scope, $this->readFile($path, $suffix) ?: []);
+                    return $this;
                 }
             }
         }
+
+        return $this;
     }
 
     /**
      * load config from all config file
+     *
+     * @return $this
+     * @throws ParseException
      */
     public function loadAll() {
         $support_suffix = array_keys($this->parsers);
@@ -189,25 +223,33 @@ class Config {
                     continue;
                 }
 
-                $scope              = pathinfo($filepath, PATHINFO_FILENAME);
+                $scope = pathinfo($filepath, PATHINFO_FILENAME);
+
+                if (isset($load_files[$scope])) {
+                    continue;
+                }
+
                 $load_files[$scope] = [$suffix, $filepath];
             }
         }
 
         // load file
         try {
-            foreach ($load_files as $scope => $fileinfo) {
-                list($suffix, $filepath) = $fileinfo;
-                $data = call_user_func([$this->parsers[$suffix], 'parse'], $filepath);
-                $this->_data->set($scope, $data);
+            foreach ($load_files as $scope => $finfo) {
+                list($suffix, $filepath) = $finfo;
+                $this->_data->set($scope, $this->readFile($filepath) ?: []);
             }
         } catch (\Throwable $ex) {
             throw new ParseException($ex->getMessage(), $ex->getCode(), $ex);
         }
+
+        return $this;
     }
 
     /**
      * @param $key
+     * @return $this|void
+     * @throws ParseException
      */
     protected function initScope($key) {
         if (is_null($key) || !is_string($key)) return;
@@ -216,6 +258,7 @@ class Config {
         if (!$this->_data->has($scope)) {
             $this->load($scope);
         }
+        return $this;
     }
 
     /**
