@@ -140,7 +140,6 @@ class Config {
         }
 
         if (!is_file($file)) {
-            echo $file . PHP_EOL;
             return null;
         }
 
