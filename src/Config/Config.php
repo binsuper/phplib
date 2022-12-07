@@ -171,6 +171,10 @@ class Config {
             // parser
             foreach ($search_files as $path) {
                 foreach ($this->parsers as $suffix => $parser) {
+                    $file = $path . '.' . $suffix;
+                    if (!is_file($file)) {
+                        continue;
+                    }
                     $this->_data->set($scope, $this->readFile($path, $suffix) ?: []);
                     return $this;
                 }
