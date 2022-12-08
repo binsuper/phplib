@@ -99,9 +99,10 @@ class ArrayObject extends \ArrayObject {
 
         // multi get
         if (is_array($key)) {
-            return array_map(function (&$k) {
-                $k = $this->get($k);
+            $a = array_map(function ($k) {
+                return $this->get($k);
             }, $key);
+            return $a;
         }
 
         return $this[$key] ?? $def;
