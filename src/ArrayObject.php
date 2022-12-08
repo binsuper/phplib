@@ -4,6 +4,14 @@ namespace Gino\Phplib;
 
 class ArrayObject extends \ArrayObject {
 
+    /**
+     * @param array $array
+     * @return ArrayObject
+     */
+    public static function from(array $array): ArrayObject {
+        return new static($array);
+    }
+
     public function toArray(): array {
         return (array)$this;
     }
@@ -55,7 +63,7 @@ class ArrayObject extends \ArrayObject {
     }
 
     /**
-     * @return $this|array|ArrayObject|mixed|null
+     * @return mixed|null
      */
     public function all() {
         return $this->get(null);
@@ -64,7 +72,7 @@ class ArrayObject extends \ArrayObject {
     /**
      * @param mixed|null $key
      * @param mixed|null $def
-     * @return $this|ArrayObject|mixed|null
+     * @return mixed|null
      */
     public function get($key, $def = null) {
         if (is_null($key)) {
@@ -89,9 +97,15 @@ class ArrayObject extends \ArrayObject {
             return $arr;
         }
 
+        // multi get
+        if (is_array($key)) {
+            return array_map(function (&$k) {
+                $k = $this->get($k);
+            }, $key);
+        }
+
         return $this[$key] ?? $def;
     }
-
 
     /**
      * @param $key
