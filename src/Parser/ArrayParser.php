@@ -12,7 +12,7 @@ class ArrayParser extends Parser {
      */
     public function parse(string $filepath) {
         $array = include $filepath;
-        if (!$array || !is_array($array)) {
+        if (!is_array($array)) {
             throw new ParseException(sprintf('can not parse php file "%s"', $filepath));
         }
         return $this->fitting($array);
