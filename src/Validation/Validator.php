@@ -45,6 +45,13 @@ class Validator {
     }
 
     /**
+     * @return array
+     */
+    public function getRules(): array {
+        return $this->rules;
+    }
+
+    /**
      * 按规则对参数进行校验
      *
      * @return array
