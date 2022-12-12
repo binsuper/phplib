@@ -27,6 +27,24 @@ class Validator {
     }
 
     /**
+     * 增加校验规则
+     *
+     * @param string|array $field
+     * @param string $rule
+     * @return $this
+     */
+    public function addRule($field, $rule = '') {
+        if (is_array($field)) {
+            foreach ($field as $f => $r) {
+                $this->rules[$f] = $r;
+            }
+        } else {
+            $this->rules[$field] = $rule;
+        }
+        return $this;
+    }
+
+    /**
      * 按规则对参数进行校验
      *
      * @return array
