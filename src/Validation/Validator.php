@@ -2,8 +2,6 @@
 
 namespace Gino\Phplib\Validation;
 
-use Nette\Utils\Validators;
-
 class Validator {
 
     protected $params   = [];
@@ -51,7 +49,7 @@ class Validator {
             $field_value = $this->params[$field];
 
             // validate params
-            if (!Validators::is($field_value, $rule)) {
+            if (!Processor::is($field_value, $rule)) {
                 $this->v_fails[$field]  = $rule;
                 $this->v_errors[$field] = $this->getFailMessage($field, $rule, false, $field_value);
                 continue;
