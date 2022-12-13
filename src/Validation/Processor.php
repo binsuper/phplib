@@ -16,6 +16,7 @@ class Processor extends Validators {
      */
     protected static function init() {
         static::$validators += [
+            'required' => [static::class, 'isMixed'],
             'enum' => [static::class, 'isEnum'],
             'in'   => [static::class, 'isEnum'],
         ];
