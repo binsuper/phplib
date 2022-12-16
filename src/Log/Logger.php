@@ -42,6 +42,22 @@ class Logger {
 
     /**
      * @param array $config
+     */
+    public function __construct(array $config) {
+        $this->setConfig($config);
+    }
+
+    /**
+     * 获取配置信息
+     *
+     * @return ArrayObject
+     */
+    public function getConfig(): ArrayObject {
+        return $this->config;
+    }
+
+    /**
+     * @param array $config
      * [
      *     'default' => 'app',
      *     'channels' => [
@@ -58,14 +74,18 @@ class Logger {
      *          ]
      *     ]
      * ]
+     *
+     * @return $this
      */
-    public function __construct(array $config) {
+    public function setConfig(array $config) {
         $default            = static::getDefaultOptions();
         $config['default']  = $config['default'] ?? $default['default'];
         $config['channels'] = $config['channels'] ?? $default['channels'];
         $config['drivers']  = ($config['drivers'] ?? []) + $default['drivers'];
 
         $this->config = new ArrayObject($config);
+
+        return $this;
     }
 
     /**
