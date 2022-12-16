@@ -24,7 +24,7 @@ class RotatingFileProcessor extends AbstractProcessor {
      */
     public function getCreator(array $options): HandlerInterface {
         $path = $options['path'];
-        $days = $options['max'] ?? 30;
+        $days = $options['max'] ?? 0;
 
         $level      = $options['level'] ?? \Monolog\Logger::DEBUG;
         $bubble     = $options['bubble'] ?? true;   // 冒泡
