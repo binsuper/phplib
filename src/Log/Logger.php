@@ -60,7 +60,7 @@ class Logger {
      * ]
      */
     public function __construct(array $config) {
-        $default            = $this->getDefaultOptions();
+        $default            = static::getDefaultOptions();
         $config['default']  = $config['default'] ?? $default['default'];
         $config['channels'] = $config['channels'] ?? $default['channels'];
         $config['drivers']  = ($config['drivers'] ?? []) + $default['drivers'];
@@ -73,7 +73,7 @@ class Logger {
      *
      * @return array[]
      */
-    public function getDefaultOptions(): array {
+    public static function getDefaultOptions(): array {
         return [
             'default'  => 'default',
             'channels' => [
