@@ -24,25 +24,79 @@ namespace Gino\Phplib\Log;
 
 use Gino\Phplib\ArrayObject;
 use Gino\Phplib\Error\BadConfigurationException;
+use Gino\Phplib\Log\Processor\IProcessor;
+use Gino\Phplib\Log\Processor\RedisShellProcessor;
 use Monolog\Handler\RotatingFileHandler;
+use Gino\Phplib\Log\Processor\RotatingFileProcessor;
 
 class Logger {
-
-    const DRIVER_DAILY   = 'daily';
-    const DRIVER_MONTHLY = 'monthly';
-    const DRIVER_YEARLY  = 'yearly';
 
     /** @var array 通道 */
     protected $channels = [];
 
     /** @var ArrayObject 配置 */
-    protected $config = [];
+    protected $config = null;
 
     protected $handler = null;
 
 
+    /**
+     * @param array $config
+     * [
+     *     'default' => 'app',
+     *     'channels' => [
+     *         'app' => [
+     *              'driver' => 'daily',
+     *              'path'   => 'logs/app.log',
+     *              'level'  => 'error',
+     *              'days'   => 15
+     *         ]
+     *     ],
+     *     'drivers' => [
+     *          'daily' => [
+     *              'class' => ''
+     *          ]
+     *     ]
+     * ]
+     */
     public function __construct(array $config) {
+        $default            = $this->getDefaultOptions();
+        $config['default']  = $config['default'] ?? $default['default'];
+        $config['channels'] = $config['channels'] ?? $default['channels'];
+        $config['drivers']  = ($config['drivers'] ?? []) + $default['drivers'];
+
         $this->config = new ArrayObject($config);
+    }
+
+    /**
+     * 默认配置
+     *
+     * @return array[]
+     */
+    public function getDefaultOptions(): array {
+        return [
+            'default'  => 'default',
+            'channels' => [
+                'default' => [
+                    'driver' => 'daily',
+                    'path'   => 'default.log',
+                ]
+            ],
+            'drivers'  => [
+                'daily'   => [
+                    'class'       => RotatingFileProcessor::class,
+                    'date_format' => RotatingFileHandler::FILE_PER_DAY,
+                ],
+                'monthly' => [
+                    'class'       => RotatingFileProcessor::class,
+                    'date_format' => RotatingFileHandler::FILE_PER_MONTH,
+                ],
+                'yearly'  => [
+                    'class'       => RotatingFileProcessor::class,
+                    'date_format' => RotatingFileHandler::FILE_PER_YEAR,
+                ]
+            ]
+        ];
     }
 
     /**
@@ -60,13 +114,13 @@ class Logger {
         if ('' === $channel) {
             $channel = $this->config->get('default');
         }
-        $key = 'channels.' . $channel;
-        $cfg = $this->config->get($key, false);
-        if (false === $cfg) {
+        $key     = 'channels.' . $channel;
+        $options = $this->config->get($key, false);
+        if (false === $options) {
             throw BadConfigurationException::miss($key);
         }
 
-        $this->channels[$channel] = static::channelFactory($channel, $cfg);
+        $this->channels[$channel] = $this->channelFactory($channel, $options);
         return $this->channels[$channel];
     }
 
@@ -74,78 +128,55 @@ class Logger {
      * 日志实例工厂
      *
      * @param string $channel
-     * @param array $cfg
+     * @param array $option
      * @return \Monolog\Logger
      * @throws BadConfigurationException
      */
-    protected static function channelFactory(string $channel, array $cfg): \Monolog\Logger {
-        $driver    = $cfg['driver'];
-        $callback  = $cfg['callback'] ?? false;
-        $formatter = $cfg['formatter'] ?? false;
-
-        // get handler
-        $method = $driver . 'Creator';
-        if (!method_exists(static::class, $method)) {
-            throw BadConfigurationException::invalid($driver);
+    protected function channelFactory(string $channel, array $option): \Monolog\Logger {
+        // make it support multi handler
+        if (!isset($option[0])) {
+            $options = [$option];
+        } else {
+            $options = $option;
         }
-        $handler = forward_static_call([static::class, $method], $cfg);
-        if (is_callable($callback)) {
-            call_user_func($callback, $handler);
+
+        $handlers = [];
+        foreach ($options as $option) {
+            $driver   = $option['driver'];
+            $callback = $option['callback'] ?? false;
+
+            // driver
+            $key            = 'drivers.' . $driver;
+            $driver_options = $this->config->get($key, false);
+            if (false === $driver_options) {
+                throw BadConfigurationException::miss($key);
+            }
+
+            $driver = $driver_options['class'] ?? false;
+            if (!$driver || !is_a($driver, IProcessor::class, true)) {
+                throw new BadConfigurationException(sprintf('driver only support an type of %s, but %s given', IProcessor::class, $driver));
+            }
+
+            // handler
+            /** @var IProcessor $driver */
+            $driver = new $driver();
+            $driver->init($driver_options);
+            $handler = $driver->getCreator($option);
+
+            // callback
+            if (is_callable($callback)) {
+                call_user_func($callback, $handler);
+            }
+
+            // push
+            $handlers[] = $handler;
         }
 
         // logger
         $logger = new \Monolog\Logger($channel);
-        $logger->pushHandler($handler);
+        $logger->setHandlers($handlers);
 
         return $logger;
     }
-
-    /**
-     * 支持按每天切割日志文件
-     *
-     * @param array $cfg
-     * @return RotatingFileHandler
-     */
-    protected static function dailyCreator(array $cfg) {
-        $path  = $cfg['path'];
-        $level = $cfg['level'] ?? \Monolog\Logger::DEBUG;
-        $days  = $cfg['max'] ?? 10;
-
-        $handler = new RotatingFileHandler($path, $days, $level);
-        return $handler;
-    }
-
-    /**
-     * 支持按每月切割日志文件
-     *
-     * @param array $cfg
-     * @return RotatingFileHandler
-     */
-    protected static function monthlyCreator(array $cfg) {
-        $path  = $cfg['path'];
-        $level = $cfg['level'] ?? \Monolog\Logger::DEBUG;
-        $days  = $cfg['max'] ?? 10;
-
-        $handler = new RotatingFileHandler($path, $days, $level);
-        $handler->setFilenameFormat('{filename}-{date}', RotatingFileHandler::FILE_PER_MONTH);
-        return $handler;
-    }
-
-    /**
-     * 支持按每年切割日志文件
-     *
-     * @param array $cfg
-     * @return RotatingFileHandler
-     */
-    protected static function yearlyCreator(array $cfg) {
-        $path  = $cfg['path'];
-        $level = $cfg['level'] ?? \Monolog\Logger::DEBUG;
-        $days  = $cfg['max'] ?? 10;
-
-        $handler = new RotatingFileHandler($path, $days, $level);
-        $handler->setFilenameFormat('{filename}-{date}', RotatingFileHandler::FILE_PER_YEAR);
-        return $handler;
-    }
-
 
 }
