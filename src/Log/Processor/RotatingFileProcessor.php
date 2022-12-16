@@ -2,20 +2,21 @@
 
 namespace Gino\Phplib\Log\Processor;
 
+use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\HandlerInterface;
 use \Monolog\Handler\RotatingFileHandler;
 
-class RotatingFileProcessor implements IProcessor {
+class RotatingFileProcessor extends AbstractProcessor {
 
-    private $file_format = '{filename}-{date}';
-    private $date_format = RotatingFileHandler::FILE_PER_DAY;
+    private $file_format;
+    private $date_format;
 
     /**
      * @inheritDoc
      */
     public function init(array $options) {
-        isset($options['file_format']) && ($this->date_format = $options['file_format']);
-        isset($options['date_format']) && ($this->date_format = $options['date_format']);
+        $this->file_format = $options['file_format'] ?? '{filename}-{date}';
+        $this->date_format = $options['date_format'] ?? RotatingFileHandler::FILE_PER_DAY;
     }
 
     /**
@@ -23,16 +24,20 @@ class RotatingFileProcessor implements IProcessor {
      */
     public function getCreator(array $options): HandlerInterface {
         $path = $options['path'];
-        $days = $options['max'] ?? 10;
+        $days = $options['max'] ?? 30;
 
         $level      = $options['level'] ?? \Monolog\Logger::DEBUG;
-        $bubble     = $options['bubble'] ?? true;
-        $permission = $options['chmod'] ?? null;
+        $bubble     = $options['bubble'] ?? true;   // 冒泡
+        $permission = $options['chmod'] ?? null;    // 文件权限
         $lock       = $options['lock'] ?? false;
 
         $handler = new RotatingFileHandler($path, $days, $level, $bubble, $permission, $lock);
-        $handler->setFilenameFormat($this->file_format, $this->date_format);
 
+        if ($this->file_format && $this->date_format) {
+            $handler->setFilenameFormat($this->file_format, $this->date_format);
+        }
+
+        $this->initFormatter($handler, $options);
         return $handler;
     }
 

@@ -5,7 +5,7 @@ namespace Gino\Phplib\Log\Processor;
 use Monolog\Handler\HandlerInterface;
 use Monolog\Handler\RedisHandler;
 
-class RedisShellProcessor implements IProcessor {
+class RedisShellProcessor extends AbstractProcessor {
 
     /** @var \Predis\Client<\Predis\Client>|\Redis */
     protected $redis;
@@ -34,6 +34,7 @@ class RedisShellProcessor implements IProcessor {
         $bubble = $options['bubble'] ?? true;
 
         $handler = new RedisHandler($this->redis, $key, $level, $bubble, $cap);
+        $this->initFormatter($handler, $options);
         return $handler;
     }
 

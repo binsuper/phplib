@@ -172,7 +172,8 @@ class Logger {
                 throw BadConfigurationException::miss($key);
             }
 
-            $driver = $driver_options['class'] ?? false;
+            $driver_callback = $driver_options['callback'] ?? false;
+            $driver          = $driver_options['class'] ?? false;
             if (!$driver || !is_a($driver, IProcessor::class, true)) {
                 throw new BadConfigurationException(sprintf('driver only support an type of %s, but %s given', IProcessor::class, $driver));
             }
@@ -183,7 +184,12 @@ class Logger {
             $driver->init($driver_options);
             $handler = $driver->getCreator($option);
 
-            // callback
+            // driver callback
+            if (is_callable($driver_callback)) {
+                call_user_func($driver_callback, $handler);
+            }
+
+            // options callback
             if (is_callable($callback)) {
                 call_user_func($callback, $handler);
             }
