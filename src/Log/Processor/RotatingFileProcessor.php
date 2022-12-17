@@ -2,9 +2,9 @@
 
 namespace Gino\Phplib\Log\Processor;
 
-use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\HandlerInterface;
 use \Monolog\Handler\RotatingFileHandler;
+use Monolog\Logger;
 
 class RotatingFileProcessor extends AbstractProcessor {
 
@@ -26,7 +26,7 @@ class RotatingFileProcessor extends AbstractProcessor {
         $path = $options['path'];
         $days = $options['max'] ?? 0;
 
-        $level      = $options['level'] ?? \Monolog\Logger::DEBUG;
+        $level      = $options['level'] ?? Logger::DEBUG;
         $bubble     = $options['bubble'] ?? true;   // 冒泡
         $permission = $options['chmod'] ?? null;    // 文件权限
         $lock       = $options['lock'] ?? false;

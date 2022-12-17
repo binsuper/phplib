@@ -4,6 +4,7 @@ namespace Gino\Phplib\Log\Processor;
 
 use Monolog\Handler\HandlerInterface;
 use Monolog\Handler\RedisHandler;
+use Monolog\Logger;
 
 class RedisShellProcessor extends AbstractProcessor {
 
@@ -30,7 +31,7 @@ class RedisShellProcessor extends AbstractProcessor {
         $key = $options['key'];
         $cap = $options['cap'] ?? 0;
 
-        $level  = $options['level'] ?? \Monolog\Logger::DEBUG;
+        $level  = $options['level'] ?? Logger::DEBUG;
         $bubble = $options['bubble'] ?? true;
 
         $handler = new RedisHandler($this->redis, $key, $level, $bubble, $cap);

@@ -25,7 +25,6 @@ namespace Gino\Phplib\Log;
 use Gino\Phplib\ArrayObject;
 use Gino\Phplib\Error\BadConfigurationException;
 use Gino\Phplib\Log\Processor\IProcessor;
-use Gino\Phplib\Log\Processor\RedisShellProcessor;
 use Monolog\Handler\RotatingFileHandler;
 use Gino\Phplib\Log\Processor\RotatingFileProcessor;
 
@@ -123,10 +122,10 @@ class Logger {
      * 返回日志通道
      *
      * @param string $channel
-     * @return \Monolog\Logger
+     * @return Executor
      * @throws BadConfigurationException
      */
-    public function channel(string $channel = ''): \Monolog\Logger {
+    public function channel(string $channel = ''): Executor {
         if (isset($this->channels[$channel])) {
             return $this->channels[$channel];
         }
@@ -149,10 +148,10 @@ class Logger {
      *
      * @param string $channel
      * @param array $option
-     * @return \Monolog\Logger
+     * @return Executor
      * @throws BadConfigurationException
      */
-    protected function channelFactory(string $channel, array $option): \Monolog\Logger {
+    protected function channelFactory(string $channel, array $option): Executor {
         // make it support multi handler
         if (!isset($option[0])) {
             $options = [$option];
@@ -199,7 +198,7 @@ class Logger {
         }
 
         // logger
-        $logger = new \Monolog\Logger($channel);
+        $logger = new Executor($channel);
         $logger->setHandlers($handlers);
 
         return $logger;
