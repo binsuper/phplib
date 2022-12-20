@@ -13,9 +13,9 @@ abstract class AbstractProcessor implements IProcessor {
      */
     public function initFormatter(HandlerInterface $handler, array $options) {
 
-        $line_format = $options['line-format'] ?? false; // 日志格式
-        $line_break  = $options['line-breaks'] ?? false; // 支持换行符
-        $line_tidy   = $options['line-tidy'] ?? false; // 忽略空的 contxt 和 extra 信息
+        $line_format = $this->convert($options['line-format'] ?? false);   // 日志格式
+        $line_break  = $this->convert($options['line-breaks'] ?? false);   // 支持换行符
+        $line_tidy   = $this->convert($options['line-tidy'] ?? false);     // 忽略空的 contxt 和 extra 信息
 
         if ($handler instanceof AbstractProcessingHandler) {
             if (false !== $line_format) {
@@ -29,6 +29,17 @@ abstract class AbstractProcessor implements IProcessor {
             }
         }
 
+    }
+
+    /**
+     * @param mixed $value
+     * @return false|mixed
+     */
+    protected function convert($value) {
+        if (is_callable($value)) {
+            return call_user_func($value, $this);
+        }
+        return $value;
     }
 
 }
