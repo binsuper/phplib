@@ -67,8 +67,8 @@ class Validator {
                     // errors
                     $this->v_fails[$field]  = $rule;
                     $this->v_errors[$field] = $this->getFailMessage($field, $rule, true);
+                    continue;
                 }
-                continue;
             }
 
             $field_value = $this->params[$field];

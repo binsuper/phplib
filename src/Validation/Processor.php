@@ -45,6 +45,8 @@ class Processor extends Validators {
             }
 
             [$type] = $item = explode(':', $item, 2);
+            if($type === 'required') continue;
+            
             static::$_extra = $item[1] ?? null;
             if (isset(static::$validators[$type])) {
                 try {
