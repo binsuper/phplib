@@ -2,16 +2,111 @@
 
 namespace Gino\Phplib;
 
+use Closure;
+
 class ArrayObject extends \ArrayObject {
+
+    /** @var string 键名分隔字符 */
+    private $key_separator = '.';
+
+    /** @var int 分隔深度 */
+    private $key_separation_deep = 0;
 
     /**
      * @param array $array
-     * @return ArrayObject
+     * @return static
      */
-    public static function from(array $array): ArrayObject {
+    public static function from(array $array): self {
         return new static($array);
     }
 
+    /**
+     * @param array $array
+     * @return static
+     */
+    public static function with(array $array): self {
+        return new static($array);
+    }
+
+    /**
+     * 设置键名解析的分隔符
+     *
+     * @param string $separator
+     * @return static
+     */
+    public function setSeparator(string $separator): self {
+        $this->key_separator = $separator;
+        return $this;
+    }
+
+    /**
+     * 设置键名解析的深度
+     *
+     * @param int $level 深度，0为不限制
+     * @return static
+     */
+    public function setSeparatorLevel(int $level): self {
+        $this->key_separation_deep = $level;
+        return $this;
+    }
+
+    /**
+     * 解析键名并执行操作
+     *
+     * @param string $key
+     * @param Closure|null $operator
+     * @return mixed
+     */
+    protected function operate(string $key, ?Closure $operator = null) {
+        if (isset($this[$key])) {
+            return $operator([], $key);
+        }
+
+        $keys    = explode($this->key_separator, $key);
+        $deep    = $this->key_separation_deep;
+        $struct  = $this;
+        $section = [];
+        $leaf    = $key;
+
+        while ($k = array_shift($keys)) {
+            // last
+            if (count($keys) == 0) {
+                $leaf = $k;
+                break;
+            }
+
+            // is not array, then set the leave keys to one
+            if (isset($struct[$k])) {
+                if (!is_array($struct[$k])) {
+                    $leaf = $k . $this->key_separator . implode($this->key_separator, $keys);
+                    break;
+                }
+                $struct = &$struct[$k];
+
+                $child_key = implode($this->key_separator, $keys);
+                if (isset($struct[$child_key])) {
+                    array_push($section, $k);
+                    $leaf = $child_key;
+                    break;
+                }
+            }
+
+            array_push($section, $k);
+
+            if (--$deep == 0) {
+                $leaf = implode($this->key_separator, $keys);
+                break;
+            }
+        }
+
+        return $operator($section, $leaf);
+    }
+
+    /**
+     * 转换为数组
+     *
+     * @return array
+     */
     public function toArray(): array {
         return (array)$this;
     }
@@ -19,35 +114,23 @@ class ArrayObject extends \ArrayObject {
     /**
      * @param mixed $key
      * @param mixed|null $val
-     * @return $this
+     * @return static
      */
-    public function set($key, $val = null) {
-        if (is_null($key)) {
+    public function set($key, $val = null): self {
+
+        if (is_null($key) || $key === '') {
             return $this;
         }
 
         if (is_string($key)) {
-
-            if (isset($this[$key])) {
-                $this[$key] = $val;
-                return $this;
-            }
-
-            $keys  = explode('.', $key);
-            $array = $this;
-            foreach ($keys as $i => $k) {
-                if (count($keys) === 1) {
-                    break;
+            $this->operate($key, function ($root, $leaf) use ($val) {
+                $struct = $this;
+                while ($branch = array_shift($root)) {
+                    $struct = &$struct[$branch];
                 }
-                unset($keys[$i]);
+                $struct[$leaf] = $val;
+            });
 
-                if (!isset($array[$k]) || !is_array($array[$k])) {
-                    $array[$k] = [];
-                }
-
-                $array = &$array[$k];
-            }
-            $array[array_shift($keys)] = $val;
             return $this;
         }
 
@@ -80,21 +163,16 @@ class ArrayObject extends \ArrayObject {
         }
 
         if (is_string($key)) {
-            if (isset($this[$key])) {
-                return $this[$key];
-            }
-            if (strpos($key, '.') === false) {
-                return $this[$key] ?? $def;
-            }
-            $arr = $this;
-            foreach (explode('.', $key) as $k) {
-                if (isset($arr[$k])) {
-                    $arr = $arr[$k];
-                } else {
-                    return $def;
+            return $this->operate($key, function ($root, $leaf) use ($def) {
+                $struct = $this;
+                while ($branch = array_shift($root)) {
+                    if (!isset($struct[$branch])) {
+                        return $def;
+                    }
+                    $struct = &$struct[$branch];
                 }
-            }
-            return $arr;
+                return $struct[$leaf] ?? $def;
+            });
         }
 
         // multi get
@@ -118,21 +196,19 @@ class ArrayObject extends \ArrayObject {
         }
 
         if (is_string($key)) {
-            $arr = $this;
-            if (isset($this[$key])) {
-                return true;
-            }
-            foreach (explode('.', $key) as $k) {
-                if (isset($arr[$k])) {
-                    $arr = $arr[$k];
-                } else {
-                    return false;
+            return $this->operate($key, function ($root, $leaf) {
+                $struct = $this;
+                while ($branch = array_shift($root)) {
+                    if (!isset($struct[$branch])) {
+                        return false;
+                    }
+                    $struct = &$struct[$branch];
                 }
-            }
-            return true;
+                return isset($struct[$leaf]);
+            });
         }
 
-        return isset($item[$key]);
+        return isset($this[$key]);
     }
 
     /**
@@ -145,25 +221,16 @@ class ArrayObject extends \ArrayObject {
         }
 
         if (is_string($key)) {
-            if (isset($this[$key])) {
-                unset($this[$key]);
-                return $this;
-            }
-            $keys  = explode('.', $key);
-            $array = $this;
-            foreach ($keys as $i => $k) {
-                if (count($keys) === 1) {
-                    break;
+            $this->operate($key, function ($root, $leaf) {
+                $struct = $this;
+                while ($branch = array_shift($root)) {
+                    if (!isset($struct[$branch])) {
+                        return $this;
+                    }
+                    $struct = &$struct[$branch];
                 }
-                unset($keys[$i]);
-
-                if (!isset($array[$k]) || !is_array($array[$k])) {
-                    $array[$k] = [];
-                }
-
-                $array = &$array[$k];
-            }
-            unset($array[array_shift($keys)]);
+                if (isset($struct[$leaf])) unset($struct[$leaf]);
+            });
             return $this;
         }
 
