@@ -199,7 +199,7 @@ class Config {
         }
 
         $load_files = [];
-        while ($dir = array_pop($search_dir)) {
+        while ($dir = array_shift($search_dir)) {
             if (!is_dir($dir)) {
                 continue;
             }
