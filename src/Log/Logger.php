@@ -119,6 +119,17 @@ class Logger {
     }
 
     /**
+     * 设置默认的日志通道
+     *
+     * @param string $channel
+     * @return static
+     */
+    public function setDefaultChannel(string $channel): Logger {
+        $this->getConfig()->set('default', $channel);
+        return $this;
+    }
+
+    /**
      * 返回日志通道
      *
      * @param string $channel
