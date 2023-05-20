@@ -22,15 +22,22 @@ class DictionarySignature extends AbstractSignature {
         ksort($data);
 
         // 2.构建明文
-        array_walk($data, function (&$val, $key) {
-            $value = $key . "=" . $val;
-        });
-        $text = implode('&', $data);
+        $text = $this->buildDictString($data);
 
         // 3.拼接密钥
         $text .= $this->getSecretKey();
 
         return $text;
+    }
+
+    protected function buildDictString(array $arr): string {
+        array_walk($arr, function (&$val, $key) {
+            if (is_array($val)) {
+                $val = $this->buildDictString($val);
+            }
+            $val = $key . "=" . $val;
+        });
+        return implode('&', $arr);
     }
 
 }
